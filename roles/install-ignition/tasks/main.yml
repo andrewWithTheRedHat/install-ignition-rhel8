@@ -1,0 +1,62 @@
+---
+
+- name: install ignition demo
+  hosts: [ignition]
+  gather_facts: false
+  vars:
+    ignition_version: 'Ignition-Edge-linux-x86-64-8'
+    ignition_source: '/usr/local/'
+    ignition_home: '/usr/local/ignition/'
+    user: 'ignition'
+
+  tasks:
+# - name: build keys and copy them to ansible if needed
+ 
+  - name: create ignition user for install
+    ansible.builtin.user:
+      name: '{{ user }}'
+      groups: wheel
+      password: redhat
+
+  - name: make the folder where this nonsense goes
+    ansible.builtin.file:
+      path: '{{ ignition_home }}/*'
+      owner: '{{ user }}'
+      group: '{{ user }}'
+      state: directory
+
+  - name: copy ignition from main server
+    ansible.builtin.copy:
+      src: '{{ ignition_source }}{{ ignition_version }}.zip'
+      dest: '{{ ignition_home }}'
+      owner: '{{ user }}'
+      group: '{{ user }}'
+
+  - name: unzip ignition folder in its location
+    ansible.builtin.unarchive:
+      src: '{{ ignition_home }}{{ ignition_version }}.zip'
+      dest: '{{ ignition_home }}'
+
+  - name: make the scripts executible
+    ansible.builtin.file:
+      path: /{{ ignition_home }}/{{ item }}
+      mode: a+x
+    loop:
+      - ignition-8.1.21-linux-64-installer.run
+
+  - name: run ignition script
+    shell: '{{ ignition_home }}ignition-8.1.21-linux-64-installer.run -- "unattended=text" "user={{ user }}" "location={{ ignition_home }}" "autoStart=true"'
+    register: output
+    ignore_errors: yes
+
+  - name: success or fail
+    ansible.builtin.debug:
+      msg: "{{ output }}"
+
+  - name: open port 8088
+    ansible.posix.firewalld:
+      port: 8088/tcp
+      permanent: yes
+      state: enabled
+      immediate: true
+

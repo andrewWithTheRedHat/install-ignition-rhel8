@@ -1,0 +1,4 @@
+collections:
+  # Install ansible.posix collection from Ansible Galaxy.
+  - name: ansible.posix
+    source: https://galaxy.ansible.com
